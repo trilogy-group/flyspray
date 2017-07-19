@@ -496,6 +496,33 @@ class Flyspray
         return str_replace('.php', '', array_map('basename', glob_compat(BASEDIR ."/lang/[a-zA-Z]*.php")));
 
     } // }}}
+
+	/**
+	 * Load all tags into array
+	 *
+	 * compared to listTags() of class project, this preloads all tags in Flyspray database
+	 * ideally called once per http request, then using the array index for getting tag info.
+	 * Mainly used to simplify/debug the big SQL query in class.backend.php function get_task_list() and with only 1 extra SQL query.
+	 *
+	 * @return array 
+	 */
+	public static function getAllTags()
+	{
+		global $db;
+		$alltags=array();
+		$res = $db->Query('SELECT tag_id,project_id,list_position,tag_name,class,show_in_list FROM {list_tag} ORDER BY list_position ASC');
+		while ($t = $db->FetchRow($res)){
+			$alltags[$t['tag_id']]=array(
+				'project_id'=>$t['project_id'],
+				'list_position'=>$t['list_position'],
+				'tag_name'=>$t['tag_name'],
+				'class'=>$t['class'],
+				'show_in_list'=>$t['show_in_list']
+			);
+		}
+		return $alltags;
+	}
+
     // Log events to the history table {{{
     /**
      * Saves an event to the database
