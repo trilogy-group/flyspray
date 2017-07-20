@@ -141,7 +141,7 @@ function tpl_list_heading($colname, $format = "<th%s>%s</th>")
 // tpl function that  draws a cell {{{
 
 function tpl_draw_cell($task, $colname, $format = "<td class='%s'>%s</td>") {
-	global $fs, $db, $proj, $page, $user;
+	global $fs, $db, $proj, $page, $user, $alltags;
 
 	$indexes = array (
             'id'         => 'task_id',
