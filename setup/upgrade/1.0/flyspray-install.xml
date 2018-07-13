@@ -817,11 +817,13 @@
       <DEFAULT value="0"/>
     </field>
     <field name="default_order_by" type="C" size="100">
+		<descr>sql order by string</descr>
       <NOTNULL/>
       <DEFAULT value="id"/>
     </field>
     <field name="default_order_by_dir" type="C" size="5">
-      <NOTNULL/>
+		<descr>unused, contained now also in default_order_by field</descr>
+	  <NOTNULL/>
       <DEFAULT value="desc"/>
     </field>
     <field name="custom_style" type="C" size="32">
