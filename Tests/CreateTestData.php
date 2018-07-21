@@ -190,10 +190,16 @@ function createTestData(){
 		$time_zone = 0; // Assign different one!
 		$email = null; // $user_name . '@example.com';
 		$group = rand(7, 9);
-
+		
+		if($i==1){
+			$registered = time() - rand($timerange-3600, $timerange);
+		}else{
+			$registered = $prevuserreg + rand(0, 0.9*2*$timerange/$maxdevelopers); # 0.9 to be sure not in future
+                }
 		$uid=Backend::create_user($user_name, $password, $real_name, '', $email, 0, $time_zone, $group, 1);
 		$db->query('UPDATE {users} SET register_date = ? WHERE user_id = ?',
-			array($created, $uid));
+			array($registered, $uid));
+		$prevuserreg=$registered;
 	}
 	$last=$now;$now=microtime(true);echo round($now-$last,6).': '.$maxdevelopers." dev users created\n";
 
@@ -317,12 +323,21 @@ function createTestData(){
 	// And that's why we've got $maxtasks opened within the last 10 years
 	for ($i = 1; $i <= $maxtasks; $i++) {
 		$project = rand(2, $maxprojects+1); # project id 1 is default project which we exclude here
+		if($i==1){
+			$opened = time() - rand($timerange-(30*24*3600), $timerange);
+		}else{
+			$opened = $prevtaskopened + rand(0, 0.9*2*$timerange/$maxtasks); # 0.9 to be sure not in future
+		}
+		
 		// Find someone who is allowed to open a task, do not use global groups
-		$sql = $db->query("SELECT uig.user_id
-			FROM {users_in_groups} uig
+		# TODO only users who existed before $opened
+		$sql = $db->query("SELECT u.user_id
+			FROM {users} u
+			JOIN {users_in_groups} uig ON u.user_id=g.user_id
 			JOIN {groups} g ON g.group_id = uig.group_id AND g.open_new_tasks = 1 AND (g.project_id = 0 OR g.project_id = ?)
-			WHERE g.group_id NOT IN (1, 2, 7, 8, 9)
-			ORDER BY $RANDOP LIMIT 1", array($project)
+			--WHERE g.group_id NOT IN (1, 2, 7, 8, 9)
+			AND u.register_date < ? 
+			ORDER BY $RANDOP LIMIT 1", array($project, $opened)
 		);
 		$reporter = $db->fetchOne($sql);
 		$sql = $db->query("SELECT category_id FROM {list_category}
@@ -331,11 +346,7 @@ function createTestData(){
 			ORDER BY $RANDOP LIMIT 1",
 		array($project));
 		$category = $db->fetchOne($sql);
-		if($i==1){
-			$opened = time() - rand($imerange-3600, $timerange);
-		}else{
-			$opened = $prevtaskopened + rand(0, 0.9*2*$timerange/$maxtasks); # 0.9 to be sure not in future
-		}
+		
 		$args = array();
 
 		$args['project_id'] = $project;
