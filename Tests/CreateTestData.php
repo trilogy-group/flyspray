@@ -65,6 +65,9 @@ function createTestData(){
 	# Set conservative data as default, setup bigger values for further performance tests.
 	# maybe setting moved out of this function to make performance graphs with multiple runs..
 
+	$years=10;
+	$timerange=3600*24*365*$years;
+	
 	$maxprojects = 3;
 	# ca 100 tasks/sec, 100 comments/sec on an old laptop with Flyspray 1.0-rc7 with mysqli setup in a virtual machine as thumb rule
 	$maxtasks = 1000; # absolute number, e.g. 1000
@@ -188,7 +191,9 @@ function createTestData(){
 		$email = null; // $user_name . '@example.com';
 		$group = rand(7, 9);
 
-		Backend::create_user($user_name, $password, $real_name, '', $email, 0, $time_zone, $group, 1);
+		$uid=Backend::create_user($user_name, $password, $real_name, '', $email, 0, $time_zone, $group, 1);
+		$db->query('UPDATE {users} SET register_date = ? WHERE user_id = ?',
+			array($created, $uid));
 	}
 	$last=$now;$now=microtime(true);echo round($now-$last,6).': '.$maxdevelopers." dev users created\n";
 
@@ -261,12 +266,11 @@ function createTestData(){
 	for ($i = 1; $i <= $maxcorporates; $i++) {
 		for ($j = 1; $j <= $maxprojects; $j++) {
 			if (rand(1, 20) == 1) {
-	            $projid = $j + 1;
-	            $db->query("INSERT INTO {groups} "
+				$projid = $j + 1;
+				$db->query("INSERT INTO {groups} "
 	                    . "(group_name,group_desc,project_id,manage_project,view_tasks, view_groups_tasks, view_own_tasks,open_new_tasks,add_comments,create_attachments,group_open,view_comments) "
 	                    . "VALUES('Corporate $i', 'Corporate $i Users', $projid, 0, 0, 1, 1, 1, 1, 1,1,1)");
-	            $sql = $db->query('SELECT MAX(group_id) FROM {groups}');
-	            $group_id = $db->fetchOne($sql);
+				$group_id = $db->insert_ID();
 				for ($k = $i; $k <= $maxcorporateusers; $k += $maxcorporates) {
 					$username = "cu$k";
 					$sql = $db->query('SELECT user_id FROM {users} WHERE user_name = ?', array($username));
@@ -312,7 +316,7 @@ function createTestData(){
 
 	// And that's why we've got $maxtasks opened within the last 10 years
 	for ($i = 1; $i <= $maxtasks; $i++) {
-		$project = rand(2, $maxprojects);
+		$project = rand(2, $maxprojects+1); # project id 1 is default project which we exclude here
 		// Find someone who is allowed to open a task, do not use global groups
 		$sql = $db->query("SELECT uig.user_id
 			FROM {users_in_groups} uig
@@ -327,18 +331,23 @@ function createTestData(){
 			ORDER BY $RANDOP LIMIT 1",
 		array($project));
 		$category = $db->fetchOne($sql);
-		$opened = time() -  rand(1, 315360000);
+		if($i==1){
+			$opened = time() - rand($imerange-3600, $timerange);
+		}else{
+			$opened = $prevtaskopened + rand(0, 0.9*2*$timerange/$maxtasks); # 0.9 to be sure not in future
+		}
 		$args = array();
 
 		$args['project_id'] = $project;
-		$args['date_opened'] = time() -  rand(1, 315360000);
+		$args['date_opened'] = $opened;
 		// 'last_edited_time' => time(),
 		$args['opened_by'] = $reporter;
 		$args['product_category'] = $category;
-		$args['task_severity'] = 1;
-		$args['task_priority'] = 1;
+		$args['task_severity'] = rand(1,5); # 5 fixed severities
+		$args['task_priority'] = rand(1,6); # 6 fixed priorities
+		$args['task_type']=rand(1,2); # 2 global tasktypes after install
 
-		// 'task_type', , 'product_version',
+		// 'product_version',
 		// 'operating_system', , 'estimated_effort',
 		// 'supertask_id',
 		$sql = $db->query("SELECT project_title FROM {projects} WHERE project_id = ?",
@@ -358,7 +367,7 @@ function createTestData(){
 			$db->query('UPDATE {tasks} SET opened_by = ?, date_opened = ? WHERE task_id = ?',
 			array($reporter, $opened, $id));
 		}
-
+		$prevtaskopened=$opened;
 	} # end for maxtasks
 
 	$last=$now;$now=microtime(true);echo round($now-$last,6).': '.$maxtasks." tasks created\n";
@@ -368,7 +377,7 @@ function createTestData(){
 		$task = Flyspray::getTaskDetails($taskid, true);
 		$project = $task['project_id'];
 		# XXX only allow comments after task created date and also later as existing comments in that task.
-		$added = time() -  rand(1, 315360000);
+		$added = time() -  rand(1, $timerange);
 
 		// Find someone who is allowed to add comment, do not use global groups
 		$sqltext = "SELECT uig.user_id
@@ -390,9 +399,7 @@ function createTestData(){
 		}
 
 		$comment = 'Comment.';
-		Backend::add_comment($task, $comment);
-		$sql = $db->query('SELECT MAX(comment_id) FROM {comments}');
-		$comment_id = $db->fetchOne($sql);
+		$comment_id=Backend::add_comment($task, $comment);
 		$db->query('UPDATE {comments} SET user_id = ?, date_added = ? WHERE comment_id = ?',
 			array($reporter->id, $added, $comment_id));
 	} # end for maxcomments
