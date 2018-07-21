@@ -333,9 +333,9 @@ function createTestData(){
 		# TODO only users who existed before $opened
 		$sql = $db->query("SELECT u.user_id
 			FROM {users} u
-			JOIN {users_in_groups} uig ON u.user_id=g.user_id
+			JOIN {users_in_groups} uig ON u.user_id=uig.user_id
 			JOIN {groups} g ON g.group_id = uig.group_id AND g.open_new_tasks = 1 AND (g.project_id = 0 OR g.project_id = ?)
-			--WHERE g.group_id NOT IN (1, 2, 7, 8, 9)
+			WHERE g.group_id NOT IN (1)
 			AND u.register_date < ? 
 			ORDER BY $RANDOP LIMIT 1", array($project, $opened)
 		);
