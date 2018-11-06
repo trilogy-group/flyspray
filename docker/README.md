@@ -2,11 +2,6 @@
 
 Dockefile is created on top of `php:5-apache-jessie` image.
 
-# Requirements
-- The project should be cloned from https://github.com/trilogy-group/flyspray
-- Docker version 18.06.0-ce
-- Docker compose version 1.22.0
-
 # Quick Start
 
 - Unzip `flyspray-Docker.zip` in `flyspray` directory
